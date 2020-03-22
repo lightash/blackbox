@@ -80,7 +80,7 @@ class blackbox():
         # adjusting the budget to the batch size
         if budget % batch != 0:
             budget = budget - budget % batch + batch
-            print('[blackbox] FYI: budget was adjusted to be ' + str(budget))
+            print(f'[blackbox] FYI: budget was adjusted to be {budget}')
 
         # default global-vs-local assumption (50-50)
         n = budget//2
@@ -100,6 +100,9 @@ class blackbox():
         # generating R-sequence
         points = np.zeros((n, d+1))
         points[:, 0:-1] = rseq(n, d)
+        def get_str_time():
+            return str(datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
+
 
         # initial sampling
         for i in range(n//batch):
@@ -122,7 +125,7 @@ class blackbox():
         # subsequent iterations (current subsequent iteration = i*batch+j)
 
         for i in range(m//batch):
-            print('[blackbox] evaluating batch %s/%s (samples %s..%s/%s) @ ' % (n//batch+i+1, (n+m)//batch, n+i*batch+1, n+(i+1)*batch, n+m) + \
+            print(f'[blackbox] evaluating batch {n//batch+i+1}/{(n+m)//batch} (samples {n+i*batch+1}..{n+(i+1)*batch}/{n+m}) @ {get_str_time()}...')
             str(datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")) + ' ...')
 
             # sampling next batch of points
@@ -150,7 +153,7 @@ class blackbox():
         labels = [' par_'+str(i+1)+(7-len(str(i+1)))*' '+',' for i in range(d)]+[' f_value    ']
         np.savetxt(resfile, points, delimiter=',', fmt=' %+1.4e', header=''.join(labels), comments='')
 
-        print('[blackbox] DONE: see results in ' + resfile + ' @ ' + str(datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")))
+        print(f'[blackbox] DONE: see results in {resfile} @ {get_str_time()}')
 
 
     @staticmethod
