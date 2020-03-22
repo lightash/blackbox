@@ -74,6 +74,23 @@ class blackbox():
             Allows the user to use various parallelisation tools
             as dask.distributed or pathos.
         """
+        import os
+
+        # continue work
+        savefile = f'{resfile[:-3]}npz'
+        if os.path.isfile(savefile) and self.continue_search:
+            print(f'[blackbox] Optimisation continues from {savefile}.')
+            # load previous results
+            with np.load(savefile) as npzfile:
+                curr_iter = npzfile['curr_iter'] + 1
+                domain = npzfile['domain']
+                points = npzfile['points']
+                if not self.widen_search:
+                    budget = npzfile['budget']
+        else:
+            print(f'[blackbox] No {savefile} to continue, starting new search.')
+            curr_iter = 0
+
         # space size
         d = len(domain)
 
@@ -97,24 +114,42 @@ class blackbox():
         def cubetobox(x):
             return [domain[i][0]+(domain[i][1]-domain[i][0])*x[i] for i in range(d)]
 
-        # generating R-sequence
-        points = np.zeros((n, d+1))
-        points[:, 0:-1] = rseq(n, d)
+        def save_csv(results, fmax=1, isArgsort=False):
+            results[:, :-1] = list(map(cubetobox, results[:, :-1]))
+            results[:, -1] *= fmax
+            if isArgsort:
+                results = results[results[:, -1].argsort()]
+            labels = [' par_' + str(i+1) + (7-len(str(i+1))) * ' ' + ',' for i in range(d)] + [' f_value    ']
+            np.savetxt(resfile, results, delimiter=',', fmt=' %+1.4e', header=''.join(labels), comments='')
+
         def get_str_time():
             return str(datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
 
+        if not continue_search:
+            # generating R-sequence
+            points = np.zeros((n, d+1))
+            points[:, 0:-1] = rseq(n, d)
+        elif widen_search:
+            points = np.append(points, np.zeros((n, d+1)), axis=0)
+            # points = np.append(points[:, -(d+1):], np.zeros((n, d+1)), axis=0)
+            n = points.shape[0]
+            points[curr_iter*batch:, :-1] = rseq(n-curr_iter*batch, d)
 
         # initial sampling
-        for i in range(n//batch):
-            print('[blackbox] evaluating batch %s/%s (samples %s..%s/%s) @ ' % (i+1, (n+m)//batch, i*batch+1, (i+1)*batch, n+m) + \
-            str(datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")) + ' ...')
-
+        for i in range(curr_iter, n//batch):
+            print(f'[blackbox] evaluating batch {i+1}/{(n+m)//batch} (samples {i*batch+1}..{(i+1)*batch}/{n+m}) @ {get_str_time()}...')
+            if os.path.isfile('stop'):
+                print('[blackbox] stopped')
+                return
             with executor() as e:
                 points[batch*i:batch*(i+1), -1] = list(e.map(f, list(map(cubetobox, points[batch*i:batch*(i+1), 0:-1]))))
+            np.savez_compressed(savefile, domain=domain, budget=budget, batch=batch, points=points, curr_iter=i)
+            # saving results into text file
+            save_csv(points.copy())
 
         # normalizing function values
         fmax = max(abs(points[:, -1]))
-        points[:, -1] = points[:, -1]/fmax
+        points[:, -1] /= fmax
 
         # volume of d-dimensional ball (r = 1)
         if d % 2 == 0:
@@ -124,9 +159,11 @@ class blackbox():
 
         # subsequent iterations (current subsequent iteration = i*batch+j)
 
-        for i in range(m//batch):
+        for i in range(curr_iter-n//batch, m//batch):
             print(f'[blackbox] evaluating batch {n//batch+i+1}/{(n+m)//batch} (samples {n+i*batch+1}..{n+(i+1)*batch}/{n+m}) @ {get_str_time()}...')
-            str(datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")) + ' ...')
+            if os.path.isfile('stop'):
+                print('Stopped')
+                return
 
             # sampling next batch of points
             fit = rbf(points)
@@ -145,13 +182,12 @@ class blackbox():
             with executor() as e:
                 points[n+batch*i:n+batch*(i+1), -1] = list(e.map(f, list(map(cubetobox, points[n+batch*i:n+batch*(i+1), 0:-1]))))/fmax
 
-        # saving results into text file
-        points[:, 0:-1] = list(map(cubetobox, points[:, 0:-1]))
-        points[:, -1] = points[:, -1]*fmax
-        points = points[points[:, -1].argsort()]
+            np.savez_compressed(savefile, domain=domain, budget=budget, batch=batch, points=points, curr_iter=i+n//batch)
+            # saving results into text file
+            save_csv(points.copy(), fmax)
 
-        labels = [' par_'+str(i+1)+(7-len(str(i+1)))*' '+',' for i in range(d)]+[' f_value    ']
-        np.savetxt(resfile, points, delimiter=',', fmt=' %+1.4e', header=''.join(labels), comments='')
+        # saving final results into text file
+        save_csv(points, fmax, isArgsort=True)
 
         print(f'[blackbox] DONE: see results in {resfile} @ {get_str_time()}')
 
