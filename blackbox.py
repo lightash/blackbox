@@ -92,6 +92,9 @@ class blackbox():
 
         # space size
         d = len(domain)
+        if d == 0:
+            print(f'[blackbox] ERROR: search domain is empty.')
+            return
 
         # adjusting the budget to the batch size
         if budget % batch != 0:
@@ -106,7 +109,7 @@ class blackbox():
 
         # n has to be greater than d
         if n <= d:
-            print('[blackbox] ERROR: budget is not sufficient')
+            print(f'[blackbox] ERROR: budget is not sufficient, minimum {d+1} calls.')
             return
 
         # go from normalized values (unit cube) to absolute values (box)
