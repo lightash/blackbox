@@ -1,4 +1,7 @@
 class blackbox():
+    """
+    A Python module for parallel optimization of expensive black-box functions.
+    """
     import sys
     import multiprocessing as mp
     import numpy as np
@@ -6,6 +9,12 @@ class blackbox():
     import datetime
 
 
+    def __init__(self, continue_search=True, widen_search=False):
+        self.continue_search = continue_search
+        self.widen_search = widen_search
+
+
+    @staticmethod
     def get_default_executor():
         """
         Provide a default executor (a context manager
@@ -38,7 +47,7 @@ class blackbox():
             return Pool
 
 
-    def search_min(f, domain, budget, batch, resfile,
+    def search_min(self, f, domain, budget, batch, resfile,
                    rho0=0.5, p=1.0,
                    executor=get_default_executor()):
         """
@@ -144,6 +153,7 @@ class blackbox():
         print('[blackbox] DONE: see results in ' + resfile + ' @ ' + str(datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")))
 
 
+    @staticmethod
     def rseq(n, d):
         """
         Build R-sequence (http://extremelearning.com.au/unreasonable-effectiveness-of-quasirandom-sequences/).
@@ -171,6 +181,7 @@ class blackbox():
         return points
 
 
+    @staticmethod
     def rbf(points):
         """
         Build RBF-fit for given points (see Holmstrom, 2008 for details).
