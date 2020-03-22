@@ -1,8 +1,8 @@
+import numpy as np
 class blackbox():
     """
     A Python module for parallel optimization of expensive black-box functions.
     """
-    import numpy as np
 
 
     def __init__(self, continue_search=True, widen_search=False):
@@ -28,6 +28,7 @@ class blackbox():
         """
         import sys
         import multiprocessing as mp
+
         if (sys.version_info > (3, 0)):
             Pool = mp.Pool
             return Pool
@@ -88,6 +89,7 @@ class blackbox():
                     budget = npzfile['budget']
         else:
             print(f'[blackbox] No {savefile} to continue, starting new search.')
+            self.continue_search = False
             curr_iter = 0
 
         # space size
@@ -127,15 +129,15 @@ class blackbox():
         def get_str_time():
             return str(datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
 
-        if not continue_search:
+        if not self.continue_search:
             # generating R-sequence
             points = np.zeros((n, d+1))
-            points[:, 0:-1] = rseq(n, d)
-        elif widen_search:
+            points[:, 0:-1] = self.rseq(n, d)
+        elif self.widen_search:
             points = np.append(points, np.zeros((n, d+1)), axis=0)
             # points = np.append(points[:, -(d+1):], np.zeros((n, d+1)), axis=0)
             n = points.shape[0]
-            points[curr_iter*batch:, :-1] = rseq(n-curr_iter*batch, d)
+            points[curr_iter*batch:, :-1] = self.rseq(n-curr_iter*batch, d)
 
         # initial sampling
         for i in range(curr_iter, n//batch):
