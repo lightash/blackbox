@@ -2,11 +2,7 @@ class blackbox():
     """
     A Python module for parallel optimization of expensive black-box functions.
     """
-    import sys
-    import multiprocessing as mp
     import numpy as np
-    import scipy.optimize as op
-    import datetime
 
 
     def __init__(self, continue_search=True, widen_search=False):
@@ -14,7 +10,6 @@ class blackbox():
         self.widen_search = widen_search
 
 
-    @staticmethod
     def get_default_executor():
         """
         Provide a default executor (a context manager
@@ -31,6 +26,8 @@ class blackbox():
         Pool : executor-like object
             An object with context manager (__enter__, __exit__) and map method.
         """
+        import sys
+        import multiprocessing as mp
         if (sys.version_info > (3, 0)):
             Pool = mp.Pool
             return Pool
@@ -75,6 +72,8 @@ class blackbox():
             as dask.distributed or pathos.
         """
         import os
+        import scipy.optimize as op
+        import datetime
 
         # continue work
         savefile = f'{resfile[:-3]}npz'
